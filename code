@@ -1,0 +1,2309 @@
+# all
+import 'package:flutter/material.dart';
+import 'dart:math';
+import 'dart:async';
+
+void main() {
+  runApp(const GarvixPro());
+}
+
+class GarvixPro extends StatelessWidget {
+  const GarvixPro({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'GARVIX PRO',
+      theme: ThemeData.dark().copyWith(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.dark,
+        ),
+      ),
+      home: const SistemaAutonomoPro(),
+    );
+  }
+}
+
+// === MODELOS AVANZADOS ===
+class Transaccion {
+  final String id;
+  final double monto;
+  final String tipo; // venta, gasto, inversion
+  final String categoria;
+  final DateTime fecha;
+  final String? producto;
+  final bool optimizada;
+  final String? notas;
+
+  Transaccion({
+    String? id,
+    required this.monto,
+    required this.tipo,
+    required this.categoria,
+    required this.fecha,
+    this.producto,
+    this.optimizada = false,
+    this.notas,
+  }) : id =
+           id ??
+           '${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(9999)}';
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'monto': monto,
+    'tipo': tipo,
+    'categoria': categoria,
+    'fecha': fecha.toIso8601String(),
+    'producto': producto,
+    'optimizada': optimizada,
+    'notas': notas,
+  };
+
+  factory Transaccion.fromJson(Map<String, dynamic> json) => Transaccion(
+    id: json['id'],
+    monto: (json['monto'] as num).toDouble(),
+    tipo: json['tipo'],
+    categoria: json['categoria'],
+    fecha: DateTime.parse(json['fecha']),
+    producto: json['producto'],
+    optimizada: json['optimizada'] ?? false,
+    notas: json['notas'],
+  );
+}
+
+class DecisionAutonoma {
+  final String id;
+  final String agente; // financiero, ventas, estrategico, sistema
+  final String accion;
+  final String razon;
+  final DateTime timestamp;
+  final double impactoEsperado;
+  bool ejecutada;
+  final String? resultado;
+
+  DecisionAutonoma({
+    String? id,
+    required this.agente,
+    required this.accion,
+    required this.razon,
+    required this.impactoEsperado,
+    this.ejecutada = false,
+    this.resultado,
+  }) : id = id ?? 'dec-${DateTime.now().millisecondsSinceEpoch}',
+       timestamp = DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'agente': agente,
+    'accion': accion,
+    'razon': razon,
+    'timestamp': timestamp.toIso8601String(),
+    'impactoEsperado': impactoEsperado,
+    'ejecutada': ejecutada,
+    'resultado': resultado,
+  };
+}
+
+class Producto {
+  final String id;
+  String nombre;
+  double precio;
+  double margen;
+  int ventasUltimos30Dias;
+  double ratingSatisfaccion;
+  double costoProduccion;
+  int stock;
+
+  Producto({
+    String? id,
+    required this.nombre,
+    required this.precio,
+    required this.margen,
+    required this.ventasUltimos30Dias,
+    required this.ratingSatisfaccion,
+    required this.costoProduccion,
+    required this.stock,
+  }) : id = id ?? 'prod-${Random().nextInt(99999)}';
+
+  double get rentabilidad =>
+      ((precio - costoProduccion) / costoProduccion) * 100;
+  bool get bajoStock => stock < 10;
+  bool get altoRendimiento => ventasUltimos30Dias > 50 && margen > 0.25;
+}
+
+// === SERVICIO DE PREDICCIÓN (Simulado) ===
+class PredictorIA {
+  static Future<double> predecirVentasProximas(
+    List<Transaccion> historial,
+  ) async {
+    // Simulación de predicción con IA
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    if (historial.isEmpty) return 0;
+
+    final ventasRecientes = historial
+        .where((t) => t.tipo == 'venta')
+        .where(
+          (t) => t.fecha.isAfter(
+            DateTime.now().subtract(const Duration(days: 30)),
+          ),
+        )
+        .toList();
+
+    if (ventasRecientes.isEmpty) return 0;
+
+    final total = ventasRecientes.map((v) => v.monto).reduce((a, b) => a + b);
+    final promedioDiario = total / 30;
+
+    // Factor de crecimiento (simulado)
+    final factorCrecimiento = 1 + (Random().nextDouble() * 0.3 - 0.1);
+
+    return promedioDiario * 30 * factorCrecimiento;
+  }
+
+  static Future<String> obtenerRecomendacionEstrategica(
+    double balance,
+    double crecimiento,
+    double eficiencia,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    if (balance < 0)
+      return "⚠️ Enfoque urgente en reducción de costos y aumento de liquidez";
+    if (crecimiento < 0)
+      return "📉 Revisar estrategia comercial y considerar promociones agresivas";
+    if (eficiencia < 0.5)
+      return "🔧 Optimizar procesos operativos para mejorar margen";
+    if (balance > 10000 && crecimiento > 0.1)
+      return "🚀 Excelente posición para expansión o inversión";
+
+    return "✅ Sistema listo. Empieza a registrar transacciones para obtener análisis personalizado";
+  }
+}
+
+// === SISTEMA PRINCIPAL ===
+class SistemaAutonomoPro extends StatefulWidget {
+  const SistemaAutonomoPro({super.key});
+
+  @override
+  State<SistemaAutonomoPro> createState() => _SistemaAutonomoProState();
+}
+
+class _SistemaAutonomoProState extends State<SistemaAutonomoPro> {
+  // === DATOS ===
+  final List<Transaccion> _transacciones = [];
+  final List<DecisionAutonoma> _decisiones = [];
+  final List<Producto> _productos = [
+    Producto(
+      nombre: "Smartphone Pro",
+      precio: 899,
+      margen: 0.35,
+      ventasUltimos30Dias: 0,
+      ratingSatisfaccion: 4.7,
+      costoProduccion: 580,
+      stock: 0,
+    ),
+    Producto(
+      nombre: "Laptop Ultra",
+      precio: 1299,
+      margen: 0.28,
+      ventasUltimos30Dias: 0,
+      ratingSatisfaccion: 4.5,
+      costoProduccion: 935,
+      stock: 0,
+    ),
+    Producto(
+      nombre: "Tablet Basic",
+      precio: 299,
+      margen: 0.22,
+      ventasUltimos30Dias: 0,
+      ratingSatisfaccion: 4.2,
+      costoProduccion: 233,
+      stock: 0,
+    ),
+  ];
+
+  // === MÉTRICAS DINÁMICAS ===
+  double _prediccionVentas30Dias = 0;
+  String _recomendacionIA = "Cargando análisis inicial...";
+  bool _cargandoIA = false;
+
+  // === GETTERS ===
+  double get _ingresosTotales => _transacciones
+      .where((t) => t.tipo == "venta")
+      .fold(0, (sum, t) => sum + t.monto);
+
+  double get _gastosTotales => _transacciones
+      .where((t) => t.tipo == "gasto")
+      .fold(0, (sum, t) => sum + t.monto);
+
+  double get _balance => _ingresosTotales - _gastosTotales;
+
+  double get _eficienciaOperativa {
+    if (_ingresosTotales == 0) return 0.0;
+    return max(0, 1 - (_gastosTotales / _ingresosTotales));
+  }
+
+  double get _tasaCrecimiento {
+    final ventas = _transacciones.where((t) => t.tipo == "venta").toList();
+    if (ventas.length < 2) return 0;
+
+    final mitad = (ventas.length / 2).floor();
+    final primeraMitad = ventas.sublist(0, mitad);
+    final segundaMitad = ventas.sublist(mitad);
+
+    final promPrimera = primeraMitad.isEmpty
+        ? 0
+        : primeraMitad.map((v) => v.monto).reduce((a, b) => a + b) /
+              primeraMitad.length;
+    final promSegunda = segundaMitad.isEmpty
+        ? 0
+        : segundaMitad.map((v) => v.monto).reduce((a, b) => a + b) /
+              segundaMitad.length;
+
+    if (promPrimera == 0) return 0;
+    return ((promSegunda - promPrimera) / promPrimera);
+  }
+
+  // === CICLO DE VIDA ===
+  @override
+  void initState() {
+    super.initState();
+    // NO cargar datos iniciales - el usuario empezará desde cero
+    _iniciarMonitoreoAutonomo();
+    _actualizarPrediccionesIA();
+  }
+
+  void _iniciarMonitoreoAutonomo() {
+    // Monitoreo continuo cada 2 minutos
+    Timer.periodic(const Duration(minutes: 2), (timer) {
+      if (mounted) {
+        _ejecutarCicloAnalisis();
+      }
+    });
+  }
+
+  // === FUNCIONES PRINCIPALES ===
+  Future<void> _actualizarPrediccionesIA() async {
+    setState(() => _cargandoIA = true);
+
+    try {
+      _prediccionVentas30Dias = await PredictorIA.predecirVentasProximas(
+        _transacciones,
+      );
+      _recomendacionIA = await PredictorIA.obtenerRecomendacionEstrategica(
+        _balance,
+        _tasaCrecimiento,
+        _eficienciaOperativa,
+      );
+    } catch (e) {
+      _recomendacionIA = "⚠️ Error en análisis IA: $e";
+    }
+
+    setState(() => _cargandoIA = false);
+  }
+
+  void _ejecutarCicloAnalisis() {
+    if (_transacciones.isNotEmpty) {
+      _analisisAgenteFinanciero();
+      _analisisAgenteVentas();
+      _analisisAgenteEstrategico();
+      _verificarAlertasCriticas();
+    }
+    _actualizarPrediccionesIA();
+  }
+
+  void _analisisAgenteFinanciero() {
+    // Detección de fugas
+    if (_ingresosTotales > 0 && _gastosTotales > _ingresosTotales * 0.7) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Financiero",
+          accion: "Reducir gastos operativos en 15%",
+          razon:
+              "Relación gastos/ingresos crítica (${(_gastosTotales / _ingresosTotales * 100).toStringAsFixed(1)}%)",
+          impactoEsperado: _gastosTotales * 0.15,
+        ),
+      );
+    }
+
+    // Optimización presupuestaria
+    if (_ingresosTotales > 0 && _eficienciaOperativa < 0.4) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Financiero",
+          accion: "Optimizar cadena de suministro",
+          razon:
+              "Eficiencia operativa baja (${(_eficienciaOperativa * 100).toStringAsFixed(1)}%)",
+          impactoEsperado: _gastosTotales * 0.1,
+        ),
+      );
+    }
+
+    // Control de inventario
+    final productosBajoStock = _productos.where((p) => p.bajoStock);
+    if (productosBajoStock.isNotEmpty) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Financiero",
+          accion:
+              "Reponer stock: ${productosBajoStock.map((p) => p.nombre).join(', ')}",
+          razon:
+              "${productosBajoStock.length} productos con stock bajo (<10 unidades)",
+          impactoEsperado: productosBajoStock
+              .map((p) => p.costoProduccion * 20)
+              .reduce((a, b) => a + b),
+        ),
+      );
+    }
+  }
+
+  void _analisisAgenteVentas() {
+    // Solo analizar si hay transacciones
+    if (_transacciones.isEmpty) return;
+
+    // Productos débiles
+    final productosDebiles = _productos.where(
+      (p) => p.ventasUltimos30Dias < 20 || p.margen < 0.2,
+    );
+    if (productosDebiles.isNotEmpty) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Ventas",
+          accion: "Activar promoción: ${productosDebiles.first.nombre} (-25%)",
+          razon:
+              "Producto con bajo desempeño (${productosDebiles.first.ventasUltimos30Dias} ventas/30d, margen ${(productosDebiles.first.margen * 100).toStringAsFixed(1)}%)",
+          impactoEsperado: productosDebiles.first.precio * 0.75 * 10,
+        ),
+      );
+    }
+
+    // Ajuste de precios dinámico
+    if (_tasaCrecimiento < -0.1) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Ventas",
+          accion: "Ajustar estrategia de precios",
+          razon:
+              "Crecimiento negativo severo (${(_tasaCrecimiento * 100).toStringAsFixed(1)}%)",
+          impactoEsperado: _ingresosTotales * 0.08,
+        ),
+      );
+    }
+
+    // Productos estrella
+    final productosEstrella = _productos.where((p) => p.altoRendimiento);
+    if (productosEstrella.isNotEmpty) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Ventas",
+          accion: "Destacar producto: ${productosEstrella.first.nombre}",
+          razon:
+              "Producto de alto rendimiento (${productosEstrella.first.ventasUltimos30Dias} ventas/30d)",
+          impactoEsperado: productosEstrella.first.precio * 5,
+        ),
+      );
+    }
+  }
+
+  void _analisisAgenteEstrategico() {
+    // Solo analizar si hay datos suficientes
+    if (_transacciones.length < 5) return;
+
+    // Decisiones estratégicas basadas en posición
+    if (_balance > 15000 && _tasaCrecimiento > 0.15) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Estratégico",
+          accion: "Inversión en expansión de mercado",
+          razon: "Posición financiera sólida y crecimiento acelerado",
+          impactoEsperado: _balance * 0.25,
+        ),
+      );
+    }
+
+    if (_balance > 5000 && _eficienciaOperativa > 0.6) {
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Estratégico",
+          accion: "Diversificar portafolio de productos",
+          razon: "Capital disponible y operaciones eficientes",
+          impactoEsperado: _balance * 0.15,
+        ),
+      );
+    }
+
+    // Preparación para temporadas
+    final mesActual = DateTime.now().month;
+    if ([11, 12].contains(mesActual)) {
+      // Nov-Dic
+      _agregarDecision(
+        DecisionAutonoma(
+          agente: "Estratégico",
+          accion: "Preparar inventario para temporada alta",
+          razon: "Temporada de ventas próxima (fin de año)",
+          impactoEsperado: _prediccionVentas30Dias * 0.3,
+        ),
+      );
+    }
+  }
+
+  void _verificarAlertasCriticas() {
+    if (_balance < -1000) {
+      _mostrarAlertaUrgente(
+        "🚨 CRISIS FINANCIERA",
+        "Balance negativo crítico: \$${_balance.abs().toStringAsFixed(2)}\n"
+            "Acción inmediata requerida",
+      );
+    }
+
+    if (_productos.where((p) => p.bajoStock).length > 2) {
+      _mostrarAlertaUrgente(
+        "⚠️ INVENTARIO BAJO",
+        "Múltiples productos con stock crítico\n"
+            "Riesgo de pérdida de ventas",
+      );
+    }
+
+    final productosSinVentas = _productos.where(
+      (p) => p.ventasUltimos30Dias == 0,
+    );
+    if (productosSinVentas.isNotEmpty && _transacciones.isNotEmpty) {
+      _mostrarAlertaUrgente(
+        "📦 PRODUCTOS INACTIVOS",
+        "${productosSinVentas.length} productos sin ventas en 30 días\n"
+            "Considerar descontinuación",
+      );
+    }
+  }
+
+  void _mostrarAlertaUrgente(String titulo, String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red[900],
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  titulo,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(mensaje, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: 'ENTENDIDO',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
+      ),
+    );
+  }
+
+  void _agregarDecision(DecisionAutonoma decision) {
+    if (_decisiones.any((d) => d.accion == decision.accion && !d.ejecutada)) {
+      return;
+    }
+
+    setState(() => _decisiones.insert(0, decision));
+
+    // Ejecución automática progresiva
+    if (decision.agente == "Financiero" || decision.agente == "Ventas") {
+      Future.delayed(const Duration(seconds: 2), () => _ejecutarDecision(0));
+    }
+  }
+
+  void _ejecutarDecision(int index) {
+    if (index >= _decisiones.length || _decisiones[index].ejecutada) return;
+
+    final decision = _decisiones[index];
+    setState(() => _decisiones[index].ejecutada = true);
+
+    // Simular efectos de la decisión
+    _simularEfectoDecision(decision);
+  }
+
+  void _simularEfectoDecision(DecisionAutonoma decision) {
+    // Simulación de efectos según tipo de decisión
+    if (decision.agente == "Financiero" &&
+        decision.accion.contains("Reducir gastos")) {
+      _transacciones.add(
+        Transaccion(
+          monto: -decision.impactoEsperado * 0.8, // Simular ahorro
+          tipo: "gasto",
+          categoria: "optimizacion",
+          fecha: DateTime.now(),
+          optimizada: true,
+          notas: "Ahorro por: ${decision.accion}",
+        ),
+      );
+    }
+
+    if (decision.agente == "Ventas" && decision.accion.contains("promoción")) {
+      final productoNombre = decision.accion.split(": ")[1].split(" (")[0];
+      _transacciones.add(
+        Transaccion(
+          monto: decision.impactoEsperado / 3,
+          tipo: "venta",
+          categoria: "promocion",
+          fecha: DateTime.now(),
+          producto: productoNombre,
+          notas: "Ventas por promoción automática",
+        ),
+      );
+    }
+  }
+
+  // === UI PRINCIPAL ===
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(),
+      drawer: _buildDrawer(),
+      body: _buildBody(),
+      floatingActionButton: _buildFAB(),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      title: const Row(
+        children: [
+          Icon(Icons.auto_awesome, color: Colors.tealAccent),
+          SizedBox(width: 8),
+          Text(
+            'GARVIX',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          ),
+          Text(
+            ' PRO',
+            style: TextStyle(fontSize: 14, color: Colors.tealAccent),
+          ),
+        ],
+      ),
+      actions: [
+        _buildIndicadorSalud(),
+        IconButton(
+          icon: const Icon(Icons.notifications),
+          onPressed: _mostrarNotificaciones,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIndicadorSalud() {
+    final salud = _transacciones.isEmpty
+        ? 0.0
+        : (_eficienciaOperativa * 0.5 +
+                  (1 + _tasaCrecimiento) * 0.3 +
+                  (_balance > 0 ? 0.2 : 0))
+              .clamp(0, 1);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Tooltip(
+        message: _transacciones.isEmpty
+            ? 'Registra tu primera transacción'
+            : 'Salud del negocio: ${(salud * 100).toStringAsFixed(0)}%',
+        child: CircularProgressIndicator(
+          backgroundColor: Colors.grey[800],
+          color: salud > 0.7
+              ? Colors.green
+              : salud > 0.4
+              ? Colors.orange
+              : Colors.red,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.teal.shade900, Colors.teal.shade700],
+              ),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.business, color: Colors.teal, size: 40),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Mi Empresa',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                Text(
+                  'Plan: Professional',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Panel Principal'),
+            onTap: () {
+              Navigator.pop(context);
+              // Ya estamos en el panel principal
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.analytics),
+            title: const Text('Reportes Avanzados'),
+            onTap: () {
+              Navigator.pop(context);
+              _mostrarReportesAvanzados();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Configuración'),
+            onTap: () {
+              Navigator.pop(context);
+              _mostrarConfiguracion();
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.business),
+            title: const Text('Información de Empresa'),
+            onTap: () {
+              Navigator.pop(context);
+              _mostrarInformacionEmpresa();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.help),
+            title: const Text('Ayuda y Soporte'),
+            onTap: () {
+              Navigator.pop(context);
+              _mostrarAyuda();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.exit_to_app),
+            title: const Text('Salir'),
+            onTap: () {
+              Navigator.pop(context);
+              _confirmarSalida();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // PANEL DE MÉTRICAS
+            _buildPanelMetricas(),
+            const SizedBox(height: 20),
+
+            // PREDICCIÓN IA
+            _buildPanelPrediccionIA(),
+            const SizedBox(height: 20),
+
+            // PRODUCTOS DESTACADOS
+            _buildPanelProductos(),
+            const SizedBox(height: 20),
+
+            // DECISIONES AUTÓNOMAS
+            _buildPanelDecisiones(),
+            const SizedBox(height: 20),
+
+            // HISTORIAL RECIENTE
+            _buildPanelHistorial(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPanelMetricas() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Text(
+              'ESTADO FINANCIERO',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              childAspectRatio: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildTarjetaMetrica(
+                  'Ingresos',
+                  _ingresosTotales,
+                  Colors.greenAccent,
+                  Icons.trending_up,
+                ),
+                _buildTarjetaMetrica(
+                  'Gastos',
+                  _gastosTotales,
+                  Colors.redAccent,
+                  Icons.trending_down,
+                ),
+                _buildTarjetaMetrica(
+                  'Balance',
+                  _balance,
+                  _balance >= 0 ? Colors.blueAccent : Colors.orange,
+                  _balance >= 0 ? Icons.account_balance : Icons.warning,
+                ),
+                _buildTarjetaMetrica(
+                  'Eficiencia',
+                  _eficienciaOperativa * 100,
+                  _eficienciaOperativa > 0.5 ? Colors.tealAccent : Colors.amber,
+                  Icons.speed,
+                  esPorcentaje: true,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTarjetaMetrica(
+    String titulo,
+    double valor,
+    Color color,
+    IconData icono, {
+    bool esPorcentaje = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icono, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                titulo,
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            esPorcentaje
+                ? '${valor.toStringAsFixed(1)}%'
+                : '\$${valor.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPanelPrediccionIA() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.psychology, color: Colors.purpleAccent),
+                const SizedBox(width: 8),
+                const Text(
+                  'PREDICCIÓN CON IA',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const Spacer(),
+                if (_cargandoIA)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(_recomendacionIA, style: const TextStyle(fontSize: 14)),
+            if (_transacciones.isNotEmpty && _prediccionVentas30Dias > 0) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: min(1, _prediccionVentas30Dias / (_ingresosTotales + 1)),
+                backgroundColor: Colors.grey[800],
+                color: Colors.tealAccent,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Proyección 30 días:',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  ),
+                  Text(
+                    '\$${_prediccionVentas30Dias.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPanelProductos() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'PRODUCTOS DISPONIBLES',
+          style: TextStyle(fontSize: 12, color: Colors.grey, letterSpacing: 1),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 180,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: _productos.map((producto) {
+              return Container(
+                width: 160,
+                margin: const EdgeInsets.only(right: 12),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          producto.nombre,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildIndicadorProducto(
+                          'Precio',
+                          '\$${producto.precio}',
+                        ),
+                        _buildIndicadorProducto(
+                          'Margen',
+                          '${(producto.margen * 100).toStringAsFixed(1)}%',
+                        ),
+                        _buildIndicadorProducto(
+                          'Ventas/mes',
+                          '${producto.ventasUltimos30Dias}',
+                        ),
+                        _buildIndicadorProducto(
+                          'Stock',
+                          '${producto.stock} ${producto.bajoStock ? '⚠️' : ''}',
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            _actualizarStockProducto(producto);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            minimumSize: const Size(double.infinity, 30),
+                          ),
+                          child: const Text(
+                            'Actualizar Stock',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIndicadorProducto(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPanelDecisiones() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'DECISIONES AUTÓNOMAS',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                letterSpacing: 1,
+              ),
+            ),
+            const Spacer(),
+            Chip(
+              label: Text(
+                '${_decisiones.where((d) => !d.ejecutada).length} pendientes',
+              ),
+              backgroundColor: Colors.teal.withOpacity(0.2),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _decisiones.isEmpty
+            ? _buildEstadoVacio()
+            : Column(
+                children: _decisiones
+                    .where((d) => !d.ejecutada)
+                    .take(3)
+                    .map((decision) => _buildTarjetaDecision(decision))
+                    .toList(),
+              ),
+        if (_decisiones.where((d) => !d.ejecutada).length > 3)
+          TextButton(
+            onPressed: _mostrarTodasDecisiones,
+            child: const Text('Ver todas las decisiones →'),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEstadoVacio() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.auto_awesome,
+            color: Colors.tealAccent.withOpacity(0.5),
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Sistema en calma',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Registra tus primeras transacciones\npara que los agentes comiencen a analizar tu negocio',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTarjetaDecision(DecisionAutonoma decision) {
+    final color = switch (decision.agente) {
+      'Financiero' => Colors.green,
+      'Ventas' => Colors.blue,
+      'Estratégico' => Colors.purple,
+      _ => Colors.teal,
+    };
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(switch (decision.agente) {
+            'Financiero' => Icons.account_balance,
+            'Ventas' => Icons.shopping_cart,
+            'Estratégico' => Icons.insights,
+            _ => Icons.auto_awesome,
+          }, color: color),
+        ),
+        title: Text(decision.accion),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(decision.razon, style: const TextStyle(fontSize: 12)),
+            if (decision.impactoEsperado > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Impacto estimado: \$${decision.impactoEsperado.toStringAsFixed(2)}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+              ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Chip(
+              label: Text(decision.agente),
+              backgroundColor: color.withOpacity(0.2),
+              labelStyle: TextStyle(fontSize: 10, color: color),
+            ),
+            const SizedBox(height: 4),
+            if (!decision.ejecutada)
+              IconButton(
+                icon: const Icon(Icons.play_arrow, size: 20),
+                onPressed: () =>
+                    _ejecutarDecision(_decisiones.indexOf(decision)),
+                tooltip: 'Ejecutar ahora',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPanelHistorial() {
+    final transaccionesRecientes = _transacciones
+        .where(
+          (t) =>
+              t.fecha.isAfter(DateTime.now().subtract(const Duration(days: 3))),
+        )
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'ACTIVIDAD RECIENTE',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                letterSpacing: 1,
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () {
+                _mostrarTodasTransacciones();
+              },
+              child: const Text(
+                'Ver historial completo',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        transaccionesRecientes.isEmpty
+            ? _buildEstadoSinActividad()
+            : ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: min(5, transaccionesRecientes.length),
+                itemBuilder: (context, index) {
+                  final t = transaccionesRecientes[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(
+                        t.tipo == 'venta'
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward,
+                        color: t.tipo == 'venta' ? Colors.green : Colors.red,
+                      ),
+                      title: Text('\$${t.monto.toStringAsFixed(2)}'),
+                      subtitle: Text(
+                        '${t.categoria} • ${_formatearFecha(t.fecha)}',
+                      ),
+                      trailing: t.producto != null
+                          ? Chip(
+                              label: Text(t.producto!),
+                              labelStyle: const TextStyle(fontSize: 10),
+                            )
+                          : null,
+                      onTap: () {
+                        _mostrarDetalleTransaccion(t);
+                      },
+                    ),
+                  );
+                },
+              ),
+      ],
+    );
+  }
+
+  Widget _buildEstadoSinActividad() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.history, color: Colors.grey, size: 40),
+          const SizedBox(height: 12),
+          const Text(
+            'No hay actividad registrada',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: () {
+              _mostrarDialogoAccionRapida();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.tealAccent,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Registrar primera transacción'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    final ahora = DateTime.now();
+    final diferencia = ahora.difference(fecha);
+
+    if (diferencia.inMinutes < 60) return 'Hace ${diferencia.inMinutes}min';
+    if (diferencia.inHours < 24) return 'Hace ${diferencia.inHours}h';
+    if (diferencia.inDays == 1) return 'Ayer';
+    return 'Hace ${diferencia.inDays}d';
+  }
+
+  Widget _buildFAB() {
+    return FloatingActionButton.extended(
+      onPressed: _mostrarDialogoAccionRapida,
+      icon: const Icon(Icons.add),
+      label: const Text('Nueva acción'),
+      backgroundColor: Colors.tealAccent,
+      foregroundColor: Colors.black,
+    );
+  }
+
+  // === FUNCIONALIDADES AVANZADAS ===
+  void _mostrarDialogoAccionRapida() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Acción rápida',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.shopping_cart, color: Colors.green),
+                title: const Text('Registrar venta'),
+                subtitle: const Text('Añadir nueva transacción de venta'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogoTransaccion('venta');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.money_off, color: Colors.red),
+                title: const Text('Registrar gasto'),
+                subtitle: const Text('Añadir nueva transacción de gasto'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogoTransaccion('gasto');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.inventory, color: Colors.orange),
+                title: const Text('Gestionar productos'),
+                subtitle: const Text('Agregar o editar productos'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _gestionarProductos();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.analytics, color: Colors.blue),
+                title: const Text('Forzar análisis'),
+                subtitle: const Text('Ejecutar análisis de agentes ahora'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _ejecutarCicloAnalisis();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Análisis ejecutado')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.summarize, color: Colors.purple),
+                title: const Text('Generar reporte'),
+                subtitle: const Text('Crear reporte detallado'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _generarReporteCompleto();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDialogoTransaccion(String tipo) {
+    showDialog(
+      context: context,
+      builder: (context) => DialogTransaccionPro(
+        tipo: tipo,
+        productos: _productos,
+        onGuardar: (monto, categoria, producto, notas) {
+          _registrarTransaccion(
+            monto,
+            tipo,
+            categoria,
+            producto: producto,
+            notas: notas,
+          );
+        },
+      ),
+    );
+  }
+
+  void _registrarTransaccion(
+    double monto,
+    String tipo,
+    String categoria, {
+    String? producto,
+    String? notas,
+  }) {
+    setState(() {
+      _transacciones.add(
+        Transaccion(
+          monto: monto,
+          tipo: tipo,
+          categoria: categoria,
+          fecha: DateTime.now(),
+          producto: producto,
+          notas: notas,
+        ),
+      );
+
+      // Actualizar ventas del producto si es venta
+      if (tipo == 'venta' && producto != null) {
+        final prod = _productos.firstWhere((p) => p.nombre == producto);
+        prod.ventasUltimos30Dias++;
+      }
+    });
+
+    // Ejecutar análisis después de transacción
+    _ejecutarCicloAnalisis();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$tipo registrada: \$${monto.toStringAsFixed(2)}'),
+        backgroundColor: tipo == 'venta' ? Colors.green : Colors.red,
+      ),
+    );
+  }
+
+  void _actualizarStockProducto(Producto producto) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Actualizar stock: ${producto.nombre}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Stock actual: ${producto.stock}'),
+            const SizedBox(height: 16),
+            TextField(
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Nuevo stock',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                final nuevoStock = int.tryParse(value);
+                if (nuevoStock != null) {
+                  setState(() {
+                    producto.stock = nuevoStock;
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Stock actualizado para ${producto.nombre}'),
+                ),
+              );
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _gestionarProductos() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gestionar Productos'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ..._productos.map((producto) {
+                  return ListTile(
+                    title: Text(producto.nombre),
+                    subtitle: Text(
+                      '\$${producto.precio} - Stock: ${producto.stock}',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () {
+                        _editarProducto(producto);
+                      },
+                    ),
+                  );
+                }).toList(),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    _agregarNuevoProducto();
+                  },
+                  child: const Text('Agregar nuevo producto'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editarProducto(Producto producto) {
+    // Implementación para editar producto
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Editar: ${producto.nombre}'),
+        content: const Text('Funcionalidad de edición en desarrollo'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _agregarNuevoProducto() {
+    // Implementación para agregar nuevo producto
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nuevo Producto'),
+        content: const Text('Funcionalidad de agregar producto en desarrollo'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarDetalleTransaccion(Transaccion transaccion) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Detalle de Transacción'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetalleLinea('Tipo', transaccion.tipo.toUpperCase()),
+              _buildDetalleLinea(
+                'Monto',
+                '\$${transaccion.monto.toStringAsFixed(2)}',
+              ),
+              _buildDetalleLinea('Categoría', transaccion.categoria),
+              if (transaccion.producto != null)
+                _buildDetalleLinea('Producto', transaccion.producto!),
+              _buildDetalleLinea('Fecha', _formatearFecha(transaccion.fecha)),
+              if (transaccion.notas != null && transaccion.notas!.isNotEmpty)
+                _buildDetalleLinea('Notas', transaccion.notas!),
+              if (transaccion.optimizada)
+                const Chip(
+                  label: Text('OPTIMIZADA'),
+                  backgroundColor: Colors.teal,
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetalleLinea(String titulo, String valor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(titulo, style: const TextStyle(color: Colors.grey)),
+          Text(valor, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarTodasTransacciones() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Historial Completo'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _transacciones.length,
+            itemBuilder: (context, index) {
+              final t = _transacciones[index];
+              return ListTile(
+                leading: Icon(
+                  t.tipo == 'venta' ? Icons.arrow_upward : Icons.arrow_downward,
+                  color: t.tipo == 'venta' ? Colors.green : Colors.red,
+                ),
+                title: Text('\$${t.monto.toStringAsFixed(2)}'),
+                subtitle: Text('${t.categoria} • ${_formatearFecha(t.fecha)}'),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _generarReporteCompleto() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('📊 Reporte Completo'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLineaReporte('Período analizado', 'Últimos 30 días'),
+              _buildLineaReporte(
+                'Total ingresos',
+                '\$${_ingresosTotales.toStringAsFixed(2)}',
+              ),
+              _buildLineaReporte(
+                'Total gastos',
+                '\$${_gastosTotales.toStringAsFixed(2)}',
+              ),
+              _buildLineaReporte(
+                'Balance neto',
+                '\$${_balance.toStringAsFixed(2)}',
+              ),
+              _buildLineaReporte(
+                'Eficiencia operativa',
+                '${(_eficienciaOperativa * 100).toStringAsFixed(1)}%',
+              ),
+              _buildLineaReporte(
+                'Tasa de crecimiento',
+                '${(_tasaCrecimiento * 100).toStringAsFixed(1)}%',
+              ),
+              _buildLineaReporte(
+                'Transacciones totales',
+                '${_transacciones.length}',
+              ),
+              _buildLineaReporte(
+                'Decisiones autónomas',
+                '${_decisiones.length}',
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Productos:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              ..._productos.map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '• ${p.nombre}: ${p.ventasUltimos30Dias} ventas, margen ${(p.margen * 100).toStringAsFixed(1)}%',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Reporte exportado (simulado)')),
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Exportar PDF'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineaReporte(String titulo, String valor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(titulo, style: const TextStyle(color: Colors.grey)),
+          Text(valor, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarTodasDecisiones() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Todas las decisiones'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _decisiones.length,
+            itemBuilder: (context, index) {
+              final d = _decisiones[index];
+              return ListTile(
+                leading: Icon(
+                  d.ejecutada ? Icons.check_circle : Icons.access_time,
+                  color: d.ejecutada ? Colors.green : Colors.orange,
+                ),
+                title: Text(d.accion),
+                subtitle: Text('${d.agente} • ${_formatearFecha(d.timestamp)}'),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // === FUNCIONES DEL DRAWER (AHORA FUNCIONALES) ===
+  void _mostrarNotificaciones() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('🔔 Notificaciones'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.notifications_none,
+                size: 50,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No hay notificaciones nuevas',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Total transacciones: ${_transacciones.length}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              Text(
+                'Decisiones pendientes: ${_decisiones.where((d) => !d.ejecutada).length}',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarReportesAvanzados() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('📈 Reportes Avanzados'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.timeline),
+                title: const Text('Análisis de tendencias'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarAnalisisTendencias();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.pie_chart),
+                title: const Text('Distribución por categoría'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDistribucionCategorias();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.compare),
+                title: const Text('Comparativa mensual'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarComparativaMensual();
+                },
+              ),
+              ListTile(
+                title: const Text('Pronóstico financiero'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarPronosticoFinanciero();
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarConfiguracion() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('⚙️ Configuración'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                title: const Text('Modo oscuro'),
+                value: true,
+                onChanged: (value) {},
+              ),
+              SwitchListTile(
+                title: const Text('Notificaciones automáticas'),
+                value: true,
+                onChanged: (value) {},
+              ),
+              SwitchListTile(
+                title: const Text('Análisis automático'),
+                value: true,
+                onChanged: (value) {},
+              ),
+              const Divider(),
+              ListTile(
+                title: const Text('Moneda'),
+                subtitle: const Text('USD - Dólar estadounidense'),
+                onTap: () {},
+              ),
+              ListTile(
+                title: const Text('Zona horaria'),
+                subtitle: const Text('UTC-5 (Colombia)'),
+                onTap: () {},
+              ),
+              ListTile(
+                title: const Text('Copia de seguridad'),
+                subtitle: const Text('Última: Hoy 10:30 AM'),
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Configuración guardada')),
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarInformacionEmpresa() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('🏢 Información de Empresa'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoEmpresa('Nombre', 'Mi Empresa Digital'),
+              _buildInfoEmpresa('NIT/RUC', '123456789-0'),
+              _buildInfoEmpresa('Sector', 'Tecnología y Electrónica'),
+              _buildInfoEmpresa('Fundación', '2024'),
+              _buildInfoEmpresa('Empleados', '5-10'),
+              _buildInfoEmpresa('Ubicación', 'Colombia'),
+              _buildInfoEmpresa('Teléfono', '+57 300 123 4567'),
+              _buildInfoEmpresa('Email', 'info@miempresa.com'),
+              _buildInfoEmpresa('Sitio web', 'www.miempresa.com'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  _editarInformacionEmpresa();
+                },
+                child: const Text('Editar información'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoEmpresa(String titulo, String valor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(titulo, style: const TextStyle(color: Colors.grey)),
+          Text(valor, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  void _editarInformacionEmpresa() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Información de Empresa'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: InputDecoration(labelText: 'Nombre de empresa'),
+              ),
+              SizedBox(height: 10),
+              TextField(decoration: InputDecoration(labelText: 'NIT/RUC')),
+              SizedBox(height: 10),
+              TextField(decoration: InputDecoration(labelText: 'Sector')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Información actualizada')),
+              );
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarAyuda() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('❓ Ayuda y Soporte'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'GARVIX PRO - Sistema Autónomo',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Cómo usar el sistema:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              _buildPasoAyuda(
+                '1',
+                'Registra tu primera venta o gasto usando el botón +',
+              ),
+              _buildPasoAyuda('2', 'Actualiza el stock de tus productos'),
+              _buildPasoAyuda('3', 'Los agentes IA analizarán automáticamente'),
+              _buildPasoAyuda('4', 'Revisa las decisiones recomendadas'),
+              _buildPasoAyuda(
+                '5',
+                'Ejecuta las decisiones que consideres adecuadas',
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Soporte:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.email),
+                title: const Text('soporte@garvixpro.com'),
+                onTap: () {},
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone),
+                title: const Text('+1 800 123 4567'),
+                onTap: () {},
+              ),
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text('www.garvixpro.com/ayuda'),
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasoAyuda(String numero, String descripcion) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.teal,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                numero,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(descripcion)),
+        ],
+      ),
+    );
+  }
+
+  void _confirmarSalida() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Salir de la aplicación?'),
+        content: const Text('Se perderán los datos no guardados. ¿Continuar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // En una app real, aquí se cerraría la aplicación
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Función de salida simulada')),
+              );
+            },
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Funciones de reportes avanzados (simuladas)
+  void _mostrarAnalisisTendencias() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('📊 Análisis de Tendencias'),
+        content: const Text(
+          'Esta función mostrará gráficos de tendencias de ventas y gastos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarDistribucionCategorias() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('🥧 Distribución por Categoría'),
+        content: const Text(
+          'Esta función mostrará un gráfico circular con la distribución de ingresos y gastos por categoría.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarComparativaMensual() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('📅 Comparativa Mensual'),
+        content: const Text('Esta función comparará el desempeño mes a mes.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarPronosticoFinanciero() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('🔮 Pronóstico Financiero'),
+        content: const Text(
+          'Esta función proyectará ingresos y gastos para los próximos meses.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// === DIÁLOGO DE TRANSACCIÓN MEJORADO ===
+class DialogTransaccionPro extends StatefulWidget {
+  final String tipo;
+  final List<Producto> productos;
+  final Function(double, String, String?, String?) onGuardar;
+
+  const DialogTransaccionPro({
+    super.key,
+    required this.tipo,
+    required this.productos,
+    required this.onGuardar,
+  });
+
+  @override
+  State<DialogTransaccionPro> createState() => _DialogTransaccionProState();
+}
+
+class _DialogTransaccionProState extends State<DialogTransaccionPro> {
+  final TextEditingController _montoController = TextEditingController();
+  final TextEditingController _notasController = TextEditingController();
+  String _categoriaSeleccionada = 'general';
+  String? _productoSeleccionado;
+
+  final List<String> _categoriasVenta = [
+    'electronica',
+    'ropa',
+    'alimentos',
+    'servicios',
+    'software',
+    'consultoria',
+    'general',
+  ];
+  final List<String> _categoriasGasto = [
+    'operacion',
+    'marketing',
+    'personal',
+    'infraestructura',
+    'impuestos',
+    'software',
+    'general',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final categorias = widget.tipo == 'venta'
+        ? _categoriasVenta
+        : _categoriasGasto;
+    final color = widget.tipo == 'venta' ? Colors.green : Colors.red;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            widget.tipo == 'venta' ? Icons.add_circle : Icons.remove_circle,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Text('Nueva ${widget.tipo.toUpperCase()}'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _montoController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Monto',
+                prefixText: '\$',
+                border: const OutlineInputBorder(),
+                suffixIcon: const Icon(Icons.attach_money),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _categoriaSeleccionada,
+              decoration: const InputDecoration(
+                labelText: 'Categoría',
+                border: OutlineInputBorder(),
+              ),
+              items: categorias.map((categoria) {
+                return DropdownMenuItem(
+                  value: categoria,
+                  child: Text(categoria.toUpperCase()),
+                );
+              }).toList(),
+              onChanged: (value) =>
+                  setState(() => _categoriaSeleccionada = value!),
+            ),
+            if (widget.tipo == 'venta') ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                value: _productoSeleccionado,
+                decoration: const InputDecoration(
+                  labelText: 'Producto (opcional)',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('No especificar'),
+                  ),
+                  ...widget.productos.map((producto) {
+                    return DropdownMenuItem(
+                      value: producto.nombre,
+                      child: Text(producto.nombre),
+                    );
+                  }),
+                ],
+                onChanged: (value) =>
+                    setState(() => _productoSeleccionado = value),
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _notasController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Notas (opcional)',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _guardar,
+          style: ElevatedButton.styleFrom(backgroundColor: color),
+          child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
+
+  void _guardar() {
+    final monto = double.tryParse(_montoController.text);
+
+    if (monto == null || monto <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ingresa un monto válido')));
+      return;
+    }
+
+    widget.onGuardar(
+      monto,
+      _categoriaSeleccionada,
+      _productoSeleccionado,
+      _notasController.text,
+    );
+    Navigator.pop(context);
+  }
+}
